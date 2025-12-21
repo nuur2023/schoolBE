@@ -1,11 +1,14 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
+using System.Security.Claims;
 
 namespace schoolBE.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ExamSchedulesController : ControllerBase
 {
     private readonly IExamSchedule _repository;
@@ -13,6 +16,16 @@ public class ExamSchedulesController : ControllerBase
     public ExamSchedulesController(IExamSchedule repository)
     {
         _repository = repository;
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            throw new UnauthorizedAccessException("User ID not found in token");
+        }
+        return userId;
     }
 
     [HttpGet]
@@ -38,10 +51,40 @@ public class ExamSchedulesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ExamSchedule>> Create(ExamSchedule schedule)
+    public async Task<ActionResult<ExamSchedule>> Create([FromBody] ExamSchedule schedule)
     {
+        if (schedule == null)
+        {
+            return BadRequest(new { message = "ExamSchedule data is required" });
+        }
+        schedule.CreatorId = GetCurrentUserId();
         var created = await _repository.AddAsync(schedule);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        // Reload with navigation properties
+        var result = await _repository.GetByIdAsync(created.Id);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, result);
+    }
+
+    [HttpPost("bulk")]
+    public async Task<ActionResult<List<ExamSchedule>>> CreateBulk([FromBody] List<ExamSchedule> schedules)
+    {
+        if (schedules == null || schedules.Count == 0)
+        {
+            return BadRequest(new { message = "ExamSchedules data is required" });
+        }
+        var currentUserId = GetCurrentUserId();
+        var createdSchedules = new List<ExamSchedule>();
+        foreach (var schedule in schedules)
+        {
+            schedule.CreatorId = currentUserId;
+            var created = await _repository.AddAsync(schedule);
+            // Reload with navigation properties
+            var result = await _repository.GetByIdAsync(created.Id);
+            if (result != null)
+            {
+                createdSchedules.Add(result);
+            }
+        }
+        return Ok(createdSchedules);
     }
 
     [HttpPut("{id}")]
@@ -49,7 +92,9 @@ public class ExamSchedulesController : ControllerBase
     {
         if (id != schedule.Id) return BadRequest();
         var updated = await _repository.UpdateAsync(schedule);
-        return Ok(updated);
+        // Reload with navigation properties
+        var result = await _repository.GetByIdAsync(updated.Id);
+        return Ok(result);
     }
 
     [HttpDelete("{id}")]

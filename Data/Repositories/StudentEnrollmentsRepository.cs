@@ -33,17 +33,32 @@ public class StudentEnrollmentsRepository(SchoolContext context) : IStudentEnrol
 
     public async Task<StudentEnrollment?> GetByIdAsync(int id)
     {
-        return await _dbSet.FindAsync(id);
+        return await _dbSet
+            .Include(se => se.School)
+            .Include(se => se.Stage)
+            .Include(se => se.Level)
+            .Include(se => se.Class)
+            .FirstOrDefaultAsync(se => se.Id == id);
     }
 
     public async Task<List<StudentEnrollment>> GetAllAsync()
     {
-        return await _dbSet.ToListAsync();
+        return await _dbSet
+            .Include(se => se.School)
+            .Include(se => se.Stage)
+            .Include(se => se.Level)
+            .Include(se => se.Class)
+            .ToListAsync();
     }
 
     public async Task<(List<StudentEnrollment> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
     {
-        var query = _dbSet.AsQueryable();
+        var query = _dbSet
+            .Include(se => se.School)
+            .Include(se => se.Stage)
+            .Include(se => se.Level)
+            .Include(se => se.Class)
+            .AsQueryable();
 
         if (!string.IsNullOrEmpty(search))
         {
@@ -51,11 +66,16 @@ public class StudentEnrollmentsRepository(SchoolContext context) : IStudentEnrol
                 se.Name.Contains(search) ||
                 se.GenId.Contains(search) ||
                 se.Address.Contains(search) ||
-                se.Mother.Contains(search));
+                se.Mother.Contains(search) ||
+                (se.School != null && se.School.Name.Contains(search)) ||
+                (se.Stage != null && se.Stage.Name.Contains(search)) ||
+                (se.Level != null && se.Level.Name.Contains(search)) ||
+                (se.Class != null && se.Class.Name.Contains(search)));
         }
 
         var totalCount = await query.CountAsync();
         var data = await query
+            .OrderByDescending(se => se.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();

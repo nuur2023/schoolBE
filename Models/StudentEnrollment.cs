@@ -23,6 +23,7 @@ public class StudentEnrollment : BaseModel
     public bool IsGraduated { get; set; }
     public bool IsLeft { get; set; }
     
+    public School? School { get; set; }
     public Stage? Stage { get; set; }
     public Level? Level { get; set; }
     public Class? Class { get; set; }
