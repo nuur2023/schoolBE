@@ -76,6 +76,7 @@ builder.Services.AddScoped<IPayment, PaymentRepository>();
 builder.Services.AddScoped<IPaymentMethods, PaymentMethodsRepository>();
 builder.Services.AddScoped<IPayRoll, PayRollRepository>();
 builder.Services.AddScoped<IPermissions, PermissionsRepository>();
+builder.Services.AddScoped<IPersons, PersonsRepository>();
 builder.Services.AddScoped<IRoles, RolesRepository>();
 builder.Services.AddScoped<ISchoolAccounts, SchoolAccountsRepository>();
 builder.Services.AddScoped<ISchools, SchoolsRepository>();

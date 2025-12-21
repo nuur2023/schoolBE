@@ -161,8 +161,8 @@ namespace schoolBE.Migrations
                     b.Property<int>("CreatorId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("DayOfWeek")
-                        .HasColumnType("int");
+                    b.Property<string>("DayOfWeek")
+                        .HasColumnType("longtext");
 
                     b.Property<TimeSpan?>("EndTime")
                         .HasColumnType("time(6)");
@@ -256,6 +256,8 @@ namespace schoolBE.Migrations
                         .HasColumnType("decimal(10,1)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId");
 
                     b.ToTable("Exams");
                 });
@@ -1344,6 +1346,17 @@ namespace schoolBE.Migrations
                     b.Navigation("Person");
 
                     b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.Exam", b =>
+                {
+                    b.HasOne("schoolBE.Models.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("School");
                 });
 
             modelBuilder.Entity("schoolBE.Models.ExamParticipants", b =>

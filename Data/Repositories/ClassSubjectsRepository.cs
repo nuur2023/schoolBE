@@ -33,17 +33,37 @@ public class ClassSubjectsRepository(SchoolContext context) : IClassSubjects
 
     public async Task<ClassSubject?> GetByIdAsync(int id)
     {
-        return await _dbSet.FindAsync(id);
+        return await _dbSet
+            .Include(cs => cs.Class)
+            .Include(cs => cs.Subject)
+            .Include(cs => cs.Person)
+            .FirstOrDefaultAsync(cs => cs.Id == id);
     }
 
     public async Task<List<ClassSubject>> GetAllAsync()
     {
-        return await _dbSet.ToListAsync();
+        return await _dbSet
+            .Include(cs => cs.Class)
+            .Include(cs => cs.Subject)
+            .Include(cs => cs.Person)
+            .ToListAsync();
     }
 
     public async Task<(List<ClassSubject> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
     {
-        var query = _dbSet.AsQueryable();
+        var query = _dbSet
+            .Include(cs => cs.Class)
+            .Include(cs => cs.Subject)
+            .Include(cs => cs.Person)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(cs => 
+                (cs.Class != null && cs.Class.Name.Contains(search)) ||
+                (cs.Subject != null && cs.Subject.Name.Contains(search)) ||
+                (cs.Person != null && cs.Person.Name.Contains(search)));
+        }
 
         var totalCount = await query.CountAsync();
         var data = await query

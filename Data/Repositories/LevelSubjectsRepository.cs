@@ -33,17 +33,33 @@ public class LevelSubjectsRepository(SchoolContext context) : ILevelSubjects
 
     public async Task<LevelSubject?> GetByIdAsync(int id)
     {
-        return await _dbSet.FindAsync(id);
+        return await _dbSet
+            .Include(ls => ls.Level)
+            .Include(ls => ls.Subject)
+            .FirstOrDefaultAsync(ls => ls.Id == id);
     }
 
     public async Task<List<LevelSubject>> GetAllAsync()
     {
-        return await _dbSet.ToListAsync();
+        return await _dbSet
+            .Include(ls => ls.Level)
+            .Include(ls => ls.Subject)
+            .ToListAsync();
     }
 
     public async Task<(List<LevelSubject> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
     {
-        var query = _dbSet.AsQueryable();
+        var query = _dbSet
+            .Include(ls => ls.Level)
+            .Include(ls => ls.Subject)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(ls => 
+                (ls.Level != null && ls.Level.Name.Contains(search)) ||
+                (ls.Subject != null && ls.Subject.Name.Contains(search)));
+        }
 
         var totalCount = await query.CountAsync();
         var data = await query

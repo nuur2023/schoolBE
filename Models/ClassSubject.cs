@@ -6,7 +6,7 @@ public class ClassSubject : BaseModel
     public int SubjectId { get; set; }
     public int? PersonId { get; set; }
     public int CreatorId { get; set; }
-    public int? DayOfWeek { get; set; }
+    public string? DayOfWeek { get; set; }
     public TimeSpan? StartTime { get; set; }
     public TimeSpan? EndTime { get; set; }
     

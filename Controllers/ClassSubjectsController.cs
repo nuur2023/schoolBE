@@ -1,11 +1,14 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
+using System.Security.Claims;
 
 namespace schoolBE.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ClassSubjectsController : ControllerBase
 {
     private readonly IClassSubjects _repository;
@@ -13,6 +16,16 @@ public class ClassSubjectsController : ControllerBase
     public ClassSubjectsController(IClassSubjects repository)
     {
         _repository = repository;
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            throw new UnauthorizedAccessException("User ID not found in token");
+        }
+        return userId;
     }
 
     [HttpGet]
@@ -38,18 +51,29 @@ public class ClassSubjectsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ClassSubject>> Create(ClassSubject classSubject)                                                                             
+    public async Task<ActionResult<ClassSubject>> Create([FromBody] ClassSubject classSubject)                                                                             
     {
+        if (classSubject == null)
+        {
+            return BadRequest(new { message = "ClassSubject data is required" });
+        }
+        classSubject.CreatorId = GetCurrentUserId();
         var created = await _repository.AddAsync(classSubject);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);                                                                              
     }
 
     [HttpPost("bulk")]
-    public async Task<ActionResult<List<ClassSubject>>> CreateBulk(List<ClassSubject> classSubjects)
+    public async Task<ActionResult<List<ClassSubject>>> CreateBulk([FromBody] List<ClassSubject> classSubjects)
     {
+        if (classSubjects == null || classSubjects.Count == 0)
+        {
+            return BadRequest(new { message = "ClassSubjects data is required" });
+        }
+        var currentUserId = GetCurrentUserId();
         var createdClassSubjects = new List<ClassSubject>();
         foreach (var classSubject in classSubjects)
         {
+            classSubject.CreatorId = currentUserId;
             var created = await _repository.AddAsync(classSubject);
             createdClassSubjects.Add(created);
         }

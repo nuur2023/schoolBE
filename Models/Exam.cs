@@ -7,5 +7,7 @@ public class Exam : BaseModel
     public int CreatorId { get; set; }
     public bool IsActive { get; set; }
     public decimal? Weight { get; set; }
+    
+    public School? School { get; set; }
 }
 
