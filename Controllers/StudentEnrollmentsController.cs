@@ -143,5 +143,24 @@ public class StudentEnrollmentsController : ControllerBase
         var student = await _repository.ActivateAsync(id);
         return Ok(student);
     }
-}
 
+    [HttpGet("by-filters")]
+    public async Task<ActionResult<List<StudentEnrollment>>> GetByStageLevelClass(
+        [FromQuery] int? stageId = null,
+        [FromQuery] int? levelId = null,
+        [FromQuery] int? classId = null,
+        [FromQuery] string? excludeStudentIds = null)
+    {
+        List<int>? excludeIds = null;
+        if (!string.IsNullOrEmpty(excludeStudentIds))
+        {
+            excludeIds = excludeStudentIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(id => int.TryParse(id.Trim(), out int parsedId) ? parsedId : (int?)null)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .ToList();
+        }
+        var students = await _repository.GetByStageLevelClassAsync(stageId, levelId, classId, excludeIds);
+        return Ok(students);
+    }
+}

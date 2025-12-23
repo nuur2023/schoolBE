@@ -28,4 +28,3 @@ public class StudentEnrollment : BaseModel
     public Level? Level { get; set; }
     public Class? Class { get; set; }
 }
-

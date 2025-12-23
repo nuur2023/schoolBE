@@ -70,6 +70,8 @@ builder.Services.AddScoped<IContacts, ContactsRepository>();
 builder.Services.AddScoped<IExamResults, ExamResultsRepository>();
 builder.Services.AddScoped<IExamSchedule, ExamScheduleRepository>();
 builder.Services.AddScoped<IExams, ExamsRepository>();
+builder.Services.AddScoped<IExamParticipants, ExamParticipantsRepository>();
+builder.Services.AddScoped<IExamRooms, ExamRoomsRepository>();
 builder.Services.AddScoped<IExpense, ExpenseRepository>();
 builder.Services.AddScoped<IFiscalYear, FiscalYearRepository>();
 builder.Services.AddScoped<IJournalDetails, JournalDetailsRepository>();
@@ -172,4 +174,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-

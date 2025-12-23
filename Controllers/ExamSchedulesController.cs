@@ -106,4 +106,3 @@ public class ExamSchedulesController : ControllerBase
         return NoContent();
     }
 }
-

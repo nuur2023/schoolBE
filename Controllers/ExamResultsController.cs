@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
@@ -6,6 +7,7 @@ namespace schoolBE.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ExamResultsController : ControllerBase
 {
     private readonly IExamResults _repository;
@@ -13,6 +15,12 @@ public class ExamResultsController : ControllerBase
     public ExamResultsController(IExamResults repository)
     {
         _repository = repository;
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        return int.TryParse(userIdClaim, out var userId) ? userId : 0;
     }
 
     [HttpGet]
@@ -38,18 +46,61 @@ public class ExamResultsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ExamResult>> Create(ExamResult result)
+    public async Task<ActionResult<ExamResult>> Create([FromBody] ExamResult result)
     {
+        result.CreatorId = GetCurrentUserId();
+        
+        // Calculate percentage
+        if (result.FullMarks > 0)
+        {
+            result.Percentage = (result.Marks / result.FullMarks) * 100;
+        }
+        
         var created = await _repository.AddAsync(result);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        var createdWithNav = await _repository.GetByIdAsync(created.Id);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, createdWithNav);
+    }
+
+    [HttpPost("bulk")]
+    public async Task<ActionResult<List<ExamResult>>> CreateBulk([FromBody] List<ExamResult> results)
+    {
+        var userId = GetCurrentUserId();
+        
+        foreach (var result in results)
+        {
+            result.CreatorId = userId;
+            
+            // Calculate percentage
+            if (result.FullMarks > 0)
+            {
+                result.Percentage = (result.Marks / result.FullMarks) * 100;
+            }
+        }
+        
+        var created = await _repository.CreateBulkAsync(results);
+        return Ok(created);
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<ExamResult>> Update(int id, ExamResult result)
+    public async Task<ActionResult<ExamResult>> Update(int id, [FromBody] ExamResult result)
     {
         if (id != result.Id) return BadRequest();
+        
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null) return NotFound();
+        
+        // Preserve CreatorId
+        result.CreatorId = existing.CreatorId;
+        
+        // Calculate percentage
+        if (result.FullMarks > 0)
+        {
+            result.Percentage = (result.Marks / result.FullMarks) * 100;
+        }
+        
         var updated = await _repository.UpdateAsync(result);
-        return Ok(updated);
+        var updatedWithNav = await _repository.GetByIdAsync(updated.Id);
+        return Ok(updatedWithNav);
     }
 
     [HttpDelete("{id}")]
@@ -61,4 +112,3 @@ public class ExamResultsController : ControllerBase
         return NoContent();
     }
 }
-

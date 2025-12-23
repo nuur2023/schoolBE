@@ -93,4 +93,39 @@ public class StudentEnrollmentsRepository(SchoolContext context) : IStudentEnrol
         }
         return student!;
     }
+
+    public async Task<List<StudentEnrollment>> GetByStageLevelClassAsync(int? stageId, int? levelId, int? classId, List<int>? excludeStudentIds = null)
+    {
+        var query = _dbSet
+            .Include(se => se.School)
+            .Include(se => se.Stage)
+            .Include(se => se.Level)
+            .Include(se => se.Class)
+            .Where(se => se.IsActive && !se.IsGraduated && !se.IsLeft)
+            .AsQueryable();
+
+        if (stageId.HasValue)
+        {
+            query = query.Where(se => se.StageId == stageId.Value);
+        }
+
+        if (levelId.HasValue)
+        {
+            query = query.Where(se => se.LevelId == levelId.Value);
+        }
+
+        if (classId.HasValue)
+        {
+            query = query.Where(se => se.ClassId == classId.Value);
+        }
+
+        if (excludeStudentIds != null && excludeStudentIds.Count > 0)
+        {
+            query = query.Where(se => !excludeStudentIds.Contains(se.Id));
+        }
+
+        return await query
+            .OrderBy(se => se.Name)
+            .ToListAsync();
+    }
 }

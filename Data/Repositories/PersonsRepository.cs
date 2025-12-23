@@ -66,22 +66,12 @@ public class PersonsRepository(SchoolContext context) : IPersons
 
         var totalCount = await query.CountAsync();
         var data = await query
+            .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
         return (data, totalCount);
-    }
-
-    public async Task<Person> ActivateAsync(int id)
-    {
-        var person = await _dbSet.FindAsync(id);
-        if (person != null)
-        {
-            person.IsActive = !person.IsActive;
-            await _context.SaveChangesAsync();
-        }
-        return person!;
     }
 }
 

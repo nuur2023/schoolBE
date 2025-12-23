@@ -10,4 +10,3 @@ public class Exam : BaseModel
     
     public School? School { get; set; }
 }
-

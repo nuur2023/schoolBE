@@ -97,4 +97,3 @@ public class ClassSubjectsController : ControllerBase
         return NoContent();
     }
 }
-
