@@ -3,16 +3,14 @@ namespace schoolBE.Models;
 public class ExamSchedule : BaseModel
 {
     public int ExamId { get; set; }
-    public int LevelSubjectId { get; set; }
     public int SchoolId { get; set; }
-    public int CreatorId { get; set; }
-    public DateTime ExamDate { get; set; }
-    public DateTime StartTime { get; set; }
-    public DateTime EndTime { get; set; }
-    public bool IsActive { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }   // exam period
+    public DateTime EndDate { get; set; }
     public bool IsPublished { get; set; }
+    public bool IsActive { get; set; } = true;
     
     public Exam? Exam { get; set; }
-    public LevelSubject? LevelSubject { get; set; }
+    public List<ExamSubject> ExamSubjects { get; set; } = new();
 }
 

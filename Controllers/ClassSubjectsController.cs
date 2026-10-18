@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
@@ -9,6 +10,7 @@ namespace schoolBE.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableCors(policyName: "CorePolicy")]
 public class ClassSubjectsController : ControllerBase
 {
     private readonly IClassSubjects _repository;
@@ -95,5 +97,12 @@ public class ClassSubjectsController : ControllerBase
         if (classSubject == null) return NotFound();
         await _repository.DeleteAsync(classSubject);
         return NoContent();
+    }
+
+    [HttpGet("by-class/{classId}")]
+    public async Task<ActionResult<List<Subject>>> GetSubjectsByClass(int classId)
+    {
+        var subjects = await _repository.GetSubjectsByClassIdAsync(classId);
+        return Ok(subjects);
     }
 }

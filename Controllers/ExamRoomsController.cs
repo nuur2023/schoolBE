@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
@@ -9,6 +10,7 @@ namespace schoolBE.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableCors(policyName: "CorePolicy")]
 public class ExamRoomsController : ControllerBase
 {
     private readonly IExamRooms _repository;

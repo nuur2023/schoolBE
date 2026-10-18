@@ -1,26 +1,85 @@
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using schoolBE.Data;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
 using schoolBE.Utils;
+using System.Security.Claims;
 
 namespace schoolBE.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableCors(policyName: "CorePolicy")]
 public class UsersController : ControllerBase
 {
     private readonly IUsers _repository;
+    private readonly SchoolContext _context;
 
-    public UsersController(IUsers repository)
+    public UsersController(IUsers repository, SchoolContext context)
     {
         _repository = repository;
+        _context = context;
+    }
+
+    public class UserUpsertRequest
+    {
+        public int? Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        /// <summary>Plain password (required on create; optional on update)</summary>
+        public string? Password { get; set; }
+        public bool IsActive { get; set; }
+        public List<string>? PhoneNumbers { get; set; }
+    }
+
+    private int TryGetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdClaim)) return 0;
+        return int.TryParse(userIdClaim, out var userId) ? userId : 0;
+    }
+
+    private static List<string> NormalizePhones(IEnumerable<string>? phones)
+    {
+        if (phones == null) return [];
+
+        return phones
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task<List<string>> GetUserPhoneNumbersAsync(int userId)
+    {
+        return await _context.Contacts
+            .Where(c => c.UsersId == userId && c.PersonId == null && c.StudentId == null)
+            .OrderBy(c => c.Id)
+            .Select(c => c.Phone)
+            .ToListAsync();
+    }
+
+    private object ToUserResponse(User user, List<string> phoneNumbers)
+    {
+        return new
+        {
+            user.Id,
+            user.Name,
+            user.Email,
+            hashedPassword = string.Empty,
+            user.IsActive,
+            user.CreatedAt,
+            user.UpdatedAt,
+            phoneNumbers
+        };
     }
 
     [HttpGet]
     public async Task<ActionResult<List<User>>> GetAll()
     {
         var users = await _repository.GetAllAsync();
-        // Don't return hashed passwords
         foreach (var user in users)
         {
             user.HashedPassword = string.Empty;
@@ -29,20 +88,19 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<User>> GetById(int id)
+    public async Task<ActionResult<object>> GetById(int id)
     {
         var user = await _repository.GetByIdAsync(id);
         if (user == null) return NotFound();
-        // Don't return the hashed password
         user.HashedPassword = string.Empty;
-        return Ok(user);
+        var phones = await GetUserPhoneNumbersAsync(id);
+        return Ok(ToUserResponse(user, phones));
     }
 
     [HttpGet("paged")]
     public async Task<ActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
     {
         var result = await _repository.GetPagedAsync(page, pageSize, search);
-        // Don't return hashed passwords
         foreach (var user in result.data)
         {
             user.HashedPassword = string.Empty;
@@ -51,45 +109,127 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<User>> Create(User user)
+    public async Task<ActionResult<object>> Create([FromBody] UserUpsertRequest request)
     {
-        // Hash the password before saving
-        if (!string.IsNullOrEmpty(user.HashedPassword))
+        if (string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { message = "Password is required" });
+
+        var user = new User
         {
-            user.HashedPassword = Helper.HashPassword(user.HashedPassword);
+            Name = request.Name.Trim(),
+            Email = request.Email.Trim(),
+            HashedPassword = Helper.HashPassword(request.Password),
+            IsActive = request.IsActive
+        };
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var created = await _repository.AddAsync(user);
+            var normalizedPhones = NormalizePhones(request.PhoneNumbers);
+            if (normalizedPhones.Count > 0)
+            {
+                var creatorId = TryGetCurrentUserId();
+                if (creatorId == 0) creatorId = created.Id;
+
+                var contacts = normalizedPhones.Select(phone => new Contact
+                {
+                    SchoolId = 0,
+                    Phone = phone,
+                    CreatorId = creatorId,
+                    UsersId = created.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+                await _context.Contacts.AddRangeAsync(contacts);
+                await _context.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+            created.HashedPassword = string.Empty;
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToUserResponse(created, normalizedPhones));
         }
-        var created = await _repository.AddAsync(user);
-        // Don't return the hashed password
-        created.HashedPassword = string.Empty;
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<User>> Update(int id, User user)
+    public async Task<ActionResult<object>> Update(int id, [FromBody] UserUpsertRequest request)
     {
-        if (id != user.Id) return BadRequest();
-        
-        // Get existing user to preserve password if not provided
+        if (request.Id.HasValue && request.Id.Value != id) return BadRequest();
+
         var existingUser = await _repository.GetByIdAsync(id);
         if (existingUser == null) return NotFound();
-        
-        // If password is provided and not empty, hash it. Otherwise, keep existing password
-        // Note: Frontend sends plain password in HashedPassword field, or empty string if not changing
-        if (!string.IsNullOrEmpty(user.HashedPassword))
+
+        var user = new User
         {
-            // Hash the new password
-            user.HashedPassword = Helper.HashPassword(user.HashedPassword);
+            Id = id,
+            Name = request.Name.Trim(),
+            Email = request.Email.Trim(),
+            IsActive = request.IsActive,
+            CreatedAt = existingUser.CreatedAt,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        if (!string.IsNullOrEmpty(request.Password))
+        {
+            user.HashedPassword = Helper.HashPassword(request.Password);
         }
         else
         {
-            // Keep existing password if not provided
             user.HashedPassword = existingUser.HashedPassword;
         }
-        
-        var updated = await _repository.UpdateAsync(user);
-        // Don't return the hashed password
-        updated.HashedPassword = string.Empty;
-        return Ok(updated);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var updated = await _repository.UpdateAsync(user);
+
+            if (request.PhoneNumbers != null)
+            {
+                var normalizedPhones = NormalizePhones(request.PhoneNumbers);
+                var existingContacts = await _context.Contacts
+                    .Where(c => c.UsersId == id && c.PersonId == null && c.StudentId == null)
+                    .ToListAsync();
+
+                if (existingContacts.Count > 0)
+                    _context.Contacts.RemoveRange(existingContacts);
+
+                if (normalizedPhones.Count > 0)
+                {
+                    var creatorId = TryGetCurrentUserId();
+                    if (creatorId == 0) creatorId = id;
+
+                    var contacts = normalizedPhones.Select(phone => new Contact
+                    {
+                        SchoolId = 0,
+                        Phone = phone,
+                        CreatorId = creatorId,
+                        UsersId = id,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                    await _context.Contacts.AddRangeAsync(contacts);
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+            updated.HashedPassword = string.Empty;
+            var phonesOut = request.PhoneNumbers != null
+                ? NormalizePhones(request.PhoneNumbers)
+                : await GetUserPhoneNumbersAsync(id);
+            return Ok(ToUserResponse(updated, phonesOut));
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     [HttpDelete("{id}")]
@@ -97,6 +237,16 @@ public class UsersController : ControllerBase
     {
         var user = await _repository.GetByIdAsync(id);
         if (user == null) return NotFound();
+
+        var userContacts = await _context.Contacts
+            .Where(c => c.UsersId == id && c.PersonId == null && c.StudentId == null)
+            .ToListAsync();
+        if (userContacts.Count > 0)
+        {
+            _context.Contacts.RemoveRange(userContacts);
+            await _context.SaveChangesAsync();
+        }
+
         await _repository.DeleteAsync(user);
         return NoContent();
     }
@@ -108,4 +258,3 @@ public class UsersController : ControllerBase
         return Ok(user);
     }
 }
-

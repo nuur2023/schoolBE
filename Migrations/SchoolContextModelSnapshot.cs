@@ -19,34 +19,6 @@ namespace schoolBE.Migrations
                 .HasAnnotation("ProductVersion", "8.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            modelBuilder.Entity("schoolBE.Models.Account", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<string>("AccountType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("ChartOfAccountId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Accounts");
-                });
-
             modelBuilder.Entity("schoolBE.Models.Attendance", b =>
                 {
                     b.Property<int>("Id")
@@ -79,36 +51,66 @@ namespace schoolBE.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("SubjectId");
+
                     b.ToTable("Attendances");
                 });
 
-            modelBuilder.Entity("schoolBE.Models.ChartOfAccount", b =>
+            modelBuilder.Entity("schoolBE.Models.AutoChargeSetting", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("Code")
-                        .IsRequired()
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ChargeTimeLocal")
                         .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Name")
+                    b.Property<int>("CreatorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DayOfMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FeeCategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsAllowedAutoCharge")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("LastRunOn")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("MonthsMode")
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("NormalBalance")
-                        .IsRequired()
+                    b.Property<int>("SchoolId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SpecificMonths")
                         .HasColumnType("longtext");
+
+                    b.Property<int>("StageId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("ChartOfAccounts");
+                    b.ToTable("AutoChargeSettings");
                 });
 
             modelBuilder.Entity("schoolBE.Models.Class", b =>
@@ -305,6 +307,9 @@ namespace schoolBE.Migrations
                     b.Property<int>("StudentId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -314,13 +319,16 @@ namespace schoolBE.Migrations
 
                     b.HasIndex("CreatorId");
 
-                    b.HasIndex("ExamScheduleId");
-
                     b.HasIndex("LevelId");
 
                     b.HasIndex("RoomId");
 
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("ExamScheduleId", "StudentId", "SubjectId")
+                        .IsUnique();
 
                     b.ToTable("ExamParticipants");
                 });
@@ -331,19 +339,17 @@ namespace schoolBE.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<int>("AcademicYear")
-                        .HasColumnType("int");
+                    b.Property<string>("AcademicYear")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("CreatorId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("ExamScheduleId")
+                    b.Property<int>("ExamSubjectId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("FullMarks")
@@ -373,7 +379,7 @@ namespace schoolBE.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ExamScheduleId");
+                    b.HasIndex("ExamSubjectId");
 
                     b.HasIndex("StudentId");
 
@@ -421,13 +427,7 @@ namespace schoolBE.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("CreatorId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("EndTime")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("ExamDate")
+                    b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("ExamId")
@@ -439,14 +439,15 @@ namespace schoolBE.Migrations
                     b.Property<bool>("IsPublished")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<int>("LevelSubjectId")
-                        .HasColumnType("int");
-
                     b.Property<int>("SchoolId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("StartTime")
+                    b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
@@ -455,9 +456,43 @@ namespace schoolBE.Migrations
 
                     b.HasIndex("ExamId");
 
+                    b.ToTable("ExamSchedules");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.ExamSubject", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<DateTime>("ExamDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ExamScheduleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LevelSubjectId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamScheduleId");
+
                     b.HasIndex("LevelSubjectId");
 
-                    b.ToTable("ExamSchedules");
+                    b.ToTable("ExamSubjects");
                 });
 
             modelBuilder.Entity("schoolBE.Models.Expense", b =>
@@ -475,6 +510,9 @@ namespace schoolBE.Migrations
                     b.Property<int>("CreatorId")
                         .HasColumnType("int");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
                     b.Property<int?>("SchoolId")
                         .HasColumnType("int");
 
@@ -490,7 +528,7 @@ namespace schoolBE.Migrations
                     b.ToTable("Expenses");
                 });
 
-            modelBuilder.Entity("schoolBE.Models.FiscalYear", b =>
+            modelBuilder.Entity("schoolBE.Models.FeeCategories", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -499,106 +537,21 @@ namespace schoolBE.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("CreatorId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsClosed")
-                        .HasColumnType("tinyint(1)");
+                    b.Property<string>("Name")
+                        .HasColumnType("longtext");
 
                     b.Property<int?>("SchoolId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime(6)");
+                    b.Property<string>("Type")
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("FiscalYears");
-                });
-
-            modelBuilder.Entity("schoolBE.Models.JournalDetail", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<string>("AccountNumber")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("CreatorId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Credit")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("Debit")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<int>("JournalEntryId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SchoolAccountId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SchoolId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("JournalDetails");
-                });
-
-            modelBuilder.Entity("schoolBE.Models.JournalEntry", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<int>("BusinessId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ReferenceNo")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int?>("SourceId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SourceType")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("JournalEntries");
+                    b.ToTable("FeeCategories");
                 });
 
             modelBuilder.Entity("schoolBE.Models.Level", b =>
@@ -734,7 +687,8 @@ namespace schoolBE.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Charged")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -742,11 +696,16 @@ namespace schoolBE.Migrations
                     b.Property<int>("CreatorId")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("Paid")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<int?>("PaymentMethodId")
+                    b.Property<int?>("FeeCategoriesId")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("Paid")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<string>("ReferenceId")
                         .HasColumnType("longtext");
@@ -769,6 +728,10 @@ namespace schoolBE.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FeeCategoriesId");
+
+                    b.HasIndex("StudentId");
 
                     b.ToTable("Payments");
                 });
@@ -958,44 +921,6 @@ namespace schoolBE.Migrations
                     b.ToTable("Schools");
                 });
 
-            modelBuilder.Entity("schoolBE.Models.SchoolAccount", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<int>("AccountId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("AccountNumber")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("CreatorId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("SchoolAccountType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("SchoolId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SchoolAccounts");
-                });
-
             modelBuilder.Entity("schoolBE.Models.SchoolUser", b =>
                 {
                     b.Property<int>("Id")
@@ -1078,11 +1003,16 @@ namespace schoolBE.Migrations
                     b.Property<int>("CreatorId")
                         .HasColumnType("int");
 
-                    b.Property<int>("CurrentAcademicYear")
-                        .HasColumnType("int");
+                    b.Property<string>("CurrentAcademicYear")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("DOB")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("Discount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("GenId")
                         .IsRequired()
@@ -1091,6 +1021,9 @@ namespace schoolBE.Migrations
                     b.Property<string>("Gender")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("GraduatedDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
@@ -1144,6 +1077,8 @@ namespace schoolBE.Migrations
 
                     b.HasIndex("LevelId");
 
+                    b.HasIndex("SchoolId");
+
                     b.HasIndex("StageId");
 
                     b.ToTable("StudentEnrollments");
@@ -1163,10 +1098,6 @@ namespace schoolBE.Migrations
 
                     b.Property<DateTime>("ExitDate")
                         .HasColumnType("datetime(6)");
-
-                    b.Property<string>("ExitType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
 
                     b.Property<string>("Reason")
                         .HasColumnType("longtext");
@@ -1189,6 +1120,116 @@ namespace schoolBE.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("StudentExits");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.StudentGraduation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CreatorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("GraduationDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatorId");
+
+                    b.HasIndex("SchoolId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("StudentGraduations");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.StudentTransfer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CreatorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FromClassId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FromLevelId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FromStageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToClassId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToLevelId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToStageId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("TransferDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TransferType")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatorId");
+
+                    b.HasIndex("FromClassId");
+
+                    b.HasIndex("FromLevelId");
+
+                    b.HasIndex("FromStageId");
+
+                    b.HasIndex("SchoolId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("ToClassId");
+
+                    b.HasIndex("ToLevelId");
+
+                    b.HasIndex("ToStageId");
+
+                    b.ToTable("StudentTransfers");
                 });
 
             modelBuilder.Entity("schoolBE.Models.Subject", b =>
@@ -1286,30 +1327,23 @@ namespace schoolBE.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("schoolBE.Models.YearEndClosingEntry", b =>
+            modelBuilder.Entity("schoolBE.Models.Attendance", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                    b.HasOne("schoolBE.Models.StudentEnrollment", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                    b.HasOne("schoolBE.Models.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Property<int>("FiscalYearId")
-                        .HasColumnType("int");
+                    b.Navigation("Student");
 
-                    b.Property<int>("SchoolId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("TotalProfit")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("YearEndClosingEntries");
+                    b.Navigation("Subject");
                 });
 
             modelBuilder.Entity("schoolBE.Models.Class", b =>
@@ -1394,6 +1428,11 @@ namespace schoolBE.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("schoolBE.Models.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Class");
 
                     b.Navigation("Creator");
@@ -1405,13 +1444,15 @@ namespace schoolBE.Migrations
                     b.Navigation("Room");
 
                     b.Navigation("Student");
+
+                    b.Navigation("Subject");
                 });
 
             modelBuilder.Entity("schoolBE.Models.ExamResult", b =>
                 {
-                    b.HasOne("schoolBE.Models.ExamSchedule", "ExamSchedule")
-                        .WithMany()
-                        .HasForeignKey("ExamScheduleId")
+                    b.HasOne("schoolBE.Models.ExamSubject", "ExamSubject")
+                        .WithMany("ExamResults")
+                        .HasForeignKey("ExamSubjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1421,7 +1462,7 @@ namespace schoolBE.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ExamSchedule");
+                    b.Navigation("ExamSubject");
 
                     b.Navigation("StudentEnrollment");
                 });
@@ -1444,13 +1485,24 @@ namespace schoolBE.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Exam");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.ExamSubject", b =>
+                {
+                    b.HasOne("schoolBE.Models.ExamSchedule", "ExamSchedule")
+                        .WithMany("ExamSubjects")
+                        .HasForeignKey("ExamScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("schoolBE.Models.LevelSubject", "LevelSubject")
                         .WithMany()
                         .HasForeignKey("LevelSubjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Exam");
+                    b.Navigation("ExamSchedule");
 
                     b.Navigation("LevelSubject");
                 });
@@ -1483,6 +1535,22 @@ namespace schoolBE.Migrations
                     b.Navigation("Level");
 
                     b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.Payment", b =>
+                {
+                    b.HasOne("schoolBE.Models.FeeCategories", "FeeCategories")
+                        .WithMany("Payment")
+                        .HasForeignKey("FeeCategoriesId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("schoolBE.Models.StudentEnrollment", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId");
+
+                    b.Navigation("FeeCategories");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("schoolBE.Models.Person", b =>
@@ -1536,6 +1604,12 @@ namespace schoolBE.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("schoolBE.Models.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("schoolBE.Models.Stage", "Stage")
                         .WithMany()
                         .HasForeignKey("StageId")
@@ -1545,6 +1619,8 @@ namespace schoolBE.Migrations
                     b.Navigation("Class");
 
                     b.Navigation("Level");
+
+                    b.Navigation("School");
 
                     b.Navigation("Stage");
                 });
@@ -1574,6 +1650,104 @@ namespace schoolBE.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("schoolBE.Models.StudentGraduation", b =>
+                {
+                    b.HasOne("schoolBE.Models.User", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("schoolBE.Models.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("schoolBE.Models.StudentEnrollment", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("School");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.StudentTransfer", b =>
+                {
+                    b.HasOne("schoolBE.Models.User", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("schoolBE.Models.Class", "FromClass")
+                        .WithMany()
+                        .HasForeignKey("FromClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("schoolBE.Models.Level", "FromLevel")
+                        .WithMany()
+                        .HasForeignKey("FromLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("schoolBE.Models.Stage", "FromStage")
+                        .WithMany()
+                        .HasForeignKey("FromStageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("schoolBE.Models.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("schoolBE.Models.StudentEnrollment", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("schoolBE.Models.Class", "ToClass")
+                        .WithMany()
+                        .HasForeignKey("ToClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("schoolBE.Models.Level", "ToLevel")
+                        .WithMany()
+                        .HasForeignKey("ToLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("schoolBE.Models.Stage", "ToStage")
+                        .WithMany()
+                        .HasForeignKey("ToStageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("FromClass");
+
+                    b.Navigation("FromLevel");
+
+                    b.Navigation("FromStage");
+
+                    b.Navigation("School");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("ToClass");
+
+                    b.Navigation("ToLevel");
+
+                    b.Navigation("ToStage");
+                });
+
             modelBuilder.Entity("schoolBE.Models.Submenu", b =>
                 {
                     b.HasOne("schoolBE.Models.Menu", "Menu")
@@ -1583,6 +1757,21 @@ namespace schoolBE.Migrations
                         .IsRequired();
 
                     b.Navigation("Menu");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.ExamSchedule", b =>
+                {
+                    b.Navigation("ExamSubjects");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.ExamSubject", b =>
+                {
+                    b.Navigation("ExamResults");
+                });
+
+            modelBuilder.Entity("schoolBE.Models.FeeCategories", b =>
+                {
+                    b.Navigation("Payment");
                 });
 
             modelBuilder.Entity("schoolBE.Models.Menu", b =>

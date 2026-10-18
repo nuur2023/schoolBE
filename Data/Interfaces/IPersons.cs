@@ -9,3 +9,15 @@ public interface IPersons : IBaseSchoolInterface<Person>
     Task<(List<Person> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+

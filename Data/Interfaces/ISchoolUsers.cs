@@ -8,6 +8,7 @@ public interface ISchoolUsers : IBaseSchoolInterface<SchoolUser>
     Task<List<SchoolUser>> GetAllAsync();
     Task<(List<SchoolUser> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null);
     Task<SchoolUser> ActivateAsync(int id);
+    Task<List<SchoolUser>> GetBySchoolIdWithUsersAsync(int schoolId);
 }
 
 

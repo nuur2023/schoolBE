@@ -37,15 +37,18 @@ public class ExamParticipantsRepository(SchoolContext context) : IExamParticipan
             .Include(ep => ep.ExamSchedule)
                 .ThenInclude(es => es!.Exam)
             .Include(ep => ep.ExamSchedule)
-                .ThenInclude(es => es!.LevelSubject)
-                    .ThenInclude(ls => ls!.Level)
+                .ThenInclude(es => es!.ExamSubjects)
+                    .ThenInclude(exs => exs.LevelSubject)
+                        .ThenInclude(ls => ls!.Level)
             .Include(ep => ep.ExamSchedule)
-                .ThenInclude(es => es!.LevelSubject)
-                    .ThenInclude(ls => ls!.Subject)
+                .ThenInclude(es => es!.ExamSubjects)
+                    .ThenInclude(exs => exs.LevelSubject)
+                        .ThenInclude(ls => ls!.Subject)
             .Include(ep => ep.Student)
             .Include(ep => ep.Class)
             .Include(ep => ep.Level)
             .Include(ep => ep.Room)
+            .Include(ep => ep.Subject)
             .FirstOrDefaultAsync(ep => ep.Id == id);
     }
 
@@ -55,15 +58,18 @@ public class ExamParticipantsRepository(SchoolContext context) : IExamParticipan
             .Include(ep => ep.ExamSchedule)
                 .ThenInclude(es => es!.Exam)
             .Include(ep => ep.ExamSchedule)
-                .ThenInclude(es => es!.LevelSubject)
-                    .ThenInclude(ls => ls!.Level)
+                .ThenInclude(es => es!.ExamSubjects)
+                    .ThenInclude(exs => exs.LevelSubject)
+                        .ThenInclude(ls => ls!.Level)
             .Include(ep => ep.ExamSchedule)
-                .ThenInclude(es => es!.LevelSubject)
-                    .ThenInclude(ls => ls!.Subject)
+                .ThenInclude(es => es!.ExamSubjects)
+                    .ThenInclude(exs => exs.LevelSubject)
+                        .ThenInclude(ls => ls!.Subject)
             .Include(ep => ep.Student)
             .Include(ep => ep.Class)
             .Include(ep => ep.Level)
             .Include(ep => ep.Room)
+            .Include(ep => ep.Subject)
             .OrderByDescending(ep => ep.CreatedAt)
             .ToListAsync();
     }
@@ -74,15 +80,18 @@ public class ExamParticipantsRepository(SchoolContext context) : IExamParticipan
             .Include(ep => ep.ExamSchedule)
                 .ThenInclude(es => es!.Exam)
             .Include(ep => ep.ExamSchedule)
-                .ThenInclude(es => es!.LevelSubject)
-                    .ThenInclude(ls => ls!.Level)
+                .ThenInclude(es => es!.ExamSubjects)
+                    .ThenInclude(exs => exs.LevelSubject)
+                        .ThenInclude(ls => ls!.Level)
             .Include(ep => ep.ExamSchedule)
-                .ThenInclude(es => es!.LevelSubject)
-                    .ThenInclude(ls => ls!.Subject)
+                .ThenInclude(es => es!.ExamSubjects)
+                    .ThenInclude(exs => exs.LevelSubject)
+                        .ThenInclude(ls => ls!.Subject)
             .Include(ep => ep.Student)
             .Include(ep => ep.Class)
             .Include(ep => ep.Level)
             .Include(ep => ep.Room)
+            .Include(ep => ep.Subject)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(search))
@@ -91,10 +100,11 @@ public class ExamParticipantsRepository(SchoolContext context) : IExamParticipan
                 (ep.Student != null && ep.Student.Name.Contains(search)) ||
                 (ep.Student != null && ep.Student.GenId.Contains(search)) ||
                 (ep.ExamSchedule != null && ep.ExamSchedule.Exam != null && ep.ExamSchedule.Exam.Title.Contains(search)) ||
-                (ep.ExamSchedule != null && ep.ExamSchedule.LevelSubject != null && ep.ExamSchedule.LevelSubject.Subject != null && ep.ExamSchedule.LevelSubject.Subject.Name.Contains(search)) ||
+                (ep.ExamSchedule != null && ep.ExamSchedule.ExamSubjects.Any(exs => exs.LevelSubject != null && exs.LevelSubject.Subject != null && exs.LevelSubject.Subject.Name.Contains(search))) ||
                 (ep.Level != null && ep.Level.Name.Contains(search)) ||
                 (ep.Class != null && ep.Class.Name.Contains(search)) ||
                 (ep.Room != null && ep.Room.Name.Contains(search)) ||
+                (ep.Subject != null && ep.Subject.Name.Contains(search)) ||
                 (ep.SeatNumber != null && ep.SeatNumber.Contains(search)) ||
                 ep.Status.Contains(search));
         }

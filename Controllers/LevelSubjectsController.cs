@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
@@ -6,6 +7,7 @@ namespace schoolBE.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableCors(policyName: "CorePolicy")]
 public class LevelSubjectsController : ControllerBase
 {
     private readonly ILevelSubjects _repository;
@@ -71,6 +73,13 @@ public class LevelSubjectsController : ControllerBase
         if (levelSubject == null) return NotFound();
         await _repository.DeleteAsync(levelSubject);
         return NoContent();
+    }
+
+    [HttpGet("by-level/{levelId}")]
+    public async Task<ActionResult<List<Subject>>> GetSubjectsByLevel(int levelId)
+    {
+        var subjects = await _repository.GetSubjectsByLevelIdAsync(levelId);
+        return Ok(subjects);
     }
 }
 

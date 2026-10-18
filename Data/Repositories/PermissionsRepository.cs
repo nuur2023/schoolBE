@@ -104,4 +104,20 @@ public class PermissionsRepository(SchoolContext context) : IPermissions
         await _dbSet.AddRangeAsync(newPermissions);
         await _context.SaveChangesAsync();
     }
+
+    public async Task DeleteForMenuAsync(int menuId)
+    {
+        var subIds = await _context.Set<Submenu>()
+            .Where(s => s.MenuId == menuId)
+            .Select(s => s.Id)
+            .ToListAsync();
+        var perms = await _dbSet
+            .Where(p =>
+                p.MenuId == menuId ||
+                (p.SubmenuId.HasValue && subIds.Contains(p.SubmenuId.Value)))
+            .ToListAsync();
+        if (perms.Count == 0) return;
+        _dbSet.RemoveRange(perms);
+        await _context.SaveChangesAsync();
+    }
 }

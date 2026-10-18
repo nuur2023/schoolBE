@@ -11,3 +11,15 @@ public interface IExamParticipants : IBaseSchoolInterface<ExamParticipants>
     Task<List<int>> GetParticipatedStudentIdsAsync(int examScheduleId);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
@@ -9,6 +10,7 @@ namespace schoolBE.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableCors(policyName: "CorePolicy")]
 public class ContactsController : ControllerBase
 {
     private readonly IContacts _repository;
@@ -166,6 +168,16 @@ public class ContactsController : ControllerBase
         var contacts = await _repository.GetAllAsync();
         var studentContacts = contacts.Where(c => c.StudentId == studentId).ToList();
         return Ok(studentContacts);
+    }
+
+    [HttpGet("user/{userId}")]
+    public async Task<ActionResult<List<Contact>>> GetByUserId(int userId)
+    {
+        var contacts = await _repository.GetAllAsync();
+        var userContacts = contacts
+            .Where(c => c.UsersId == userId && c.PersonId == null && c.StudentId == null)
+            .ToList();
+        return Ok(userContacts);
     }
 
     [HttpDelete("student/{studentId}")]

@@ -19,9 +19,20 @@ public class SchoolsRepository(SchoolContext context) : ISchools
 
     public async Task<School> UpdateAsync(School entity)
     {
-        _dbSet.Update(entity);
+        var existing = await _dbSet.FindAsync(entity.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"School with id {entity.Id} was not found.");
+
+        existing.Name = entity.Name;
+        existing.Address = entity.Address;
+        existing.Logo = entity.Logo;
+        existing.Days = entity.Days;
+        existing.CreatorId = entity.CreatorId;
+        existing.IsActive = entity.IsActive;
+        existing.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
-        return entity;
+        return existing;
     }
 
     public async Task<School> DeleteAsync(School entity)

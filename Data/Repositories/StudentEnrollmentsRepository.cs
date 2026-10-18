@@ -51,7 +51,7 @@ public class StudentEnrollmentsRepository(SchoolContext context) : IStudentEnrol
             .ToListAsync();
     }
 
-    public async Task<(List<StudentEnrollment> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
+    public async Task<(List<StudentEnrollment> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null, bool? isActive = null)
     {
         var query = _dbSet
             .Include(se => se.School)
@@ -59,6 +59,11 @@ public class StudentEnrollmentsRepository(SchoolContext context) : IStudentEnrol
             .Include(se => se.Level)
             .Include(se => se.Class)
             .AsQueryable();
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(se => se.IsActive == isActive.Value);
+        }
 
         if (!string.IsNullOrEmpty(search))
         {

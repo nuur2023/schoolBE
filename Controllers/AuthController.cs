@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using schoolBE.Data;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
 using schoolBE.Utils;
@@ -13,15 +16,18 @@ namespace schoolBE.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableCors(policyName: "CorePolicy")]
 public class AuthController : ControllerBase
 {
     private readonly IUsers _usersRepository;
+    private readonly SchoolContext _context;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IUsers usersRepository, IConfiguration configuration, ILogger<AuthController> logger)
+    public AuthController(IUsers usersRepository, SchoolContext context, IConfiguration configuration, ILogger<AuthController> logger)
     {
         _usersRepository = usersRepository;
+        _context = context;
         _configuration = configuration;
         _logger = logger;
     }
@@ -72,11 +78,12 @@ public class AuthController : ControllerBase
             };
 
             // Set secure cookie with token
+            // Using Vite proxy makes requests appear same-origin, so Lax works
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true, // Use HTTPS in production
-                SameSite = SameSiteMode.Strict,
+                Secure = false, // false for HTTP in development
+                SameSite = SameSiteMode.Lax, // Lax works with same-origin requests (via proxy)
                 Expires = expiresAt,
                 Path = "/"
             };
@@ -120,12 +127,30 @@ public class AuthController : ControllerBase
                 return NotFound();
             }
 
+            // Attach active school (if any) for admin UI
+            var schoolUser = await _context.Set<SchoolUser>()
+                .AsNoTracking()
+                .Where(su => su.UsersId == user.Id && su.IsActive)
+                .OrderByDescending(su => su.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            School? school = null;
+            if (schoolUser != null)
+            {
+                school = await _context.Set<School>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == schoolUser.SchoolId);
+            }
+
             return Ok(new
             {
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
-                IsActive = user.IsActive
+                IsActive = user.IsActive,
+                SchoolId = schoolUser?.SchoolId,
+                SchoolName = school?.Name,
+                SchoolLogo = school?.Logo
             });
         }
         catch (Exception ex)
@@ -168,4 +193,3 @@ public class AuthController : ControllerBase
         return tokenHandler.WriteToken(token);
     }
 }
-

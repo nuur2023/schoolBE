@@ -75,4 +75,13 @@ public class SchoolUsersRepository(SchoolContext context) : ISchoolUsers
         }
         return schoolUser!;
     }
+
+    public async Task<List<SchoolUser>> GetBySchoolIdWithUsersAsync(int schoolId)
+    {
+        return await _dbSet
+            .Where(su => su.SchoolId == schoolId)
+            .Include(su => su.User)
+            .AsNoTracking()
+            .ToListAsync();
+    }
 }

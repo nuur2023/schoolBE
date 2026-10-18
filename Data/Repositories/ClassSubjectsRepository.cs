@@ -34,7 +34,9 @@ public class ClassSubjectsRepository(SchoolContext context) : IClassSubjects
     public async Task<ClassSubject?> GetByIdAsync(int id)
     {
         return await _dbSet
-            .Include(cs => cs.Class)
+            .Include(cs => cs.Class!)
+                .ThenInclude(c => c.Level!)
+                .ThenInclude(l => l!.Stage)
             .Include(cs => cs.Subject)
             .Include(cs => cs.Person)
             .FirstOrDefaultAsync(cs => cs.Id == id);
@@ -52,7 +54,9 @@ public class ClassSubjectsRepository(SchoolContext context) : IClassSubjects
     public async Task<(List<ClassSubject> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
     {
         var query = _dbSet
-            .Include(cs => cs.Class)
+            .Include(cs => cs.Class!)
+                .ThenInclude(c => c.Level!)
+                .ThenInclude(l => l!.Stage)
             .Include(cs => cs.Subject)
             .Include(cs => cs.Person)
             .AsQueryable();
@@ -73,4 +77,16 @@ public class ClassSubjectsRepository(SchoolContext context) : IClassSubjects
 
         return (data, totalCount);
     }
+
+    public async Task<List<Subject>> GetSubjectsByClassIdAsync(int classId)
+    {
+        return await _dbSet
+            .Include(cs => cs.Subject)
+            .Where(cs => cs.ClassId == classId && cs.Subject != null && cs.Subject.IsActive)
+            .Select(cs => cs.Subject!)
+            .Distinct()
+            .OrderBy(s => s.Name)
+            .ToListAsync();
+    }
+
 }

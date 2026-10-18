@@ -69,4 +69,15 @@ public class LevelSubjectsRepository(SchoolContext context) : ILevelSubjects
 
         return (data, totalCount);
     }
+
+    public async Task<List<Subject>> GetSubjectsByLevelIdAsync(int levelId)
+    {
+        return await _dbSet
+            .Include(ls => ls.Subject)
+            .Where(ls => ls.LevelId == levelId && ls.Subject != null && ls.Subject.IsActive)
+            .Select(ls => ls.Subject!)
+            .Distinct()
+            .OrderBy(s => s.Name)
+            .ToListAsync();
+    }
 }

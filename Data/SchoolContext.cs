@@ -9,9 +9,8 @@ public class SchoolContext : DbContext
     {
     }
 
-    public DbSet<Account> Accounts { get; set; }
+    public DbSet<AutoChargeSetting> AutoChargeSettings { get; set; }
     public DbSet<Attendance> Attendances { get; set; }
-    public DbSet<ChartOfAccount> ChartOfAccounts { get; set; }
     public DbSet<Class> Classes { get; set; }
     public DbSet<ClassSubject> ClassSubjects { get; set; }
     public DbSet<Contact> Contacts { get; set; }
@@ -20,10 +19,9 @@ public class SchoolContext : DbContext
     public DbSet<ExamResult> ExamResults { get; set; }
     public DbSet<ExamRoom> ExamRooms { get; set; }
     public DbSet<ExamSchedule> ExamSchedules { get; set; }
+    public DbSet<ExamSubject> ExamSubjects { get; set; }
     public DbSet<Expense> Expenses { get; set; }
-    public DbSet<FiscalYear> FiscalYears { get; set; }
-    public DbSet<JournalDetail> JournalDetails { get; set; }
-    public DbSet<JournalEntry> JournalEntries { get; set; }
+    public DbSet<FeeCategories> FeeCategories { get; set; }
     public DbSet<Level> Levels { get; set; }
     public DbSet<LevelSubject> LevelSubjects { get; set; }
     public DbSet<Menu> Menus { get; set; }
@@ -34,15 +32,15 @@ public class SchoolContext : DbContext
     public DbSet<Person> Persons { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<School> Schools { get; set; }
-    public DbSet<SchoolAccount> SchoolAccounts { get; set; }
     public DbSet<SchoolUser> SchoolUsers { get; set; }
     public DbSet<Stage> Stages { get; set; }
     public DbSet<StudentEnrollment> StudentEnrollments { get; set; }
     public DbSet<StudentExit> StudentExits { get; set; }
+    public DbSet<StudentGraduation> StudentGraduations { get; set; }
+    public DbSet<StudentTransfer> StudentTransfers { get; set; }
     public DbSet<Subject> Subjects { get; set; }
     public DbSet<Submenu> Submenus { get; set; }
     public DbSet<User> Users { get; set; }
-    public DbSet<YearEndClosingEntry> YearEndClosingEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -103,15 +101,25 @@ public class SchoolContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<ExamParticipants>()
+            .HasOne(ep => ep.Subject)
+            .WithMany()
+            .HasForeignKey(ep => ep.SubjectId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<ExamParticipants>()
+            .HasIndex(ep => new { ep.ExamScheduleId, ep.StudentId, ep.SubjectId })
+            .IsUnique();
+
+        modelBuilder.Entity<ExamParticipants>()
             .HasOne(ep => ep.Creator)
             .WithMany()
             .HasForeignKey(ep => ep.CreatorId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<ExamResult>()
-            .HasOne(er => er.ExamSchedule)
-            .WithMany()
-            .HasForeignKey(er => er.ExamScheduleId)
+            .HasOne(er => er.ExamSubject)
+            .WithMany(es => es.ExamResults)
+            .HasForeignKey(er => er.ExamSubjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<ExamResult>()
@@ -132,7 +140,13 @@ public class SchoolContext : DbContext
             .HasForeignKey(es => es.ExamId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<ExamSchedule>()
+        modelBuilder.Entity<ExamSubject>()
+            .HasOne(es => es.ExamSchedule)
+            .WithMany(schedule => schedule.ExamSubjects)
+            .HasForeignKey(es => es.ExamScheduleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ExamSubject>()
             .HasOne(es => es.LevelSubject)
             .WithMany()
             .HasForeignKey(es => es.LevelSubjectId)
@@ -220,6 +234,78 @@ public class SchoolContext : DbContext
             .HasForeignKey(se => se.CreatorId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<StudentGraduation>()
+            .HasOne(sg => sg.Student)
+            .WithMany()
+            .HasForeignKey(sg => sg.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StudentGraduation>()
+            .HasOne(sg => sg.School)
+            .WithMany()
+            .HasForeignKey(sg => sg.SchoolId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<StudentGraduation>()
+            .HasOne(sg => sg.Creator)
+            .WithMany()
+            .HasForeignKey(sg => sg.CreatorId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.Student)
+            .WithMany()
+            .HasForeignKey(st => st.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.School)
+            .WithMany()
+            .HasForeignKey(st => st.SchoolId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.Creator)
+            .WithMany()
+            .HasForeignKey(st => st.CreatorId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.FromStage)
+            .WithMany()
+            .HasForeignKey(st => st.FromStageId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.FromLevel)
+            .WithMany()
+            .HasForeignKey(st => st.FromLevelId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.FromClass)
+            .WithMany()
+            .HasForeignKey(st => st.FromClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.ToStage)
+            .WithMany()
+            .HasForeignKey(st => st.ToStageId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.ToLevel)
+            .WithMany()
+            .HasForeignKey(st => st.ToLevelId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentTransfer>()
+            .HasOne(st => st.ToClass)
+            .WithMany()
+            .HasForeignKey(st => st.ToClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Submenu>()
             .HasOne(sm => sm.Menu)
             .WithMany(m => m.Submenus)
@@ -247,6 +333,29 @@ public class SchoolContext : DbContext
         modelBuilder.Entity<ExamResult>()
             .Property(er => er.Percentage)
             .HasPrecision(10, 2);
+
+        modelBuilder.Entity<Payment>()
+            .HasOne(p => p.FeeCategories)
+            .WithMany(fc => fc.Payment)
+            .HasForeignKey(p => p.FeeCategoriesId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Configure decimal precision for Payment
+        modelBuilder.Entity<Payment>()
+            .Property(p => p.Charged)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Payment>()
+            .Property(p => p.Paid)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<StudentEnrollment>()
+            .Property(se => se.Discount)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<AutoChargeSetting>()
+            .Property(a => a.Amount)
+            .HasPrecision(18, 2);
     }
 }
 

@@ -43,21 +43,6 @@ public static class SeedData
             context.Users.Add(superAdminUser);
             context.SaveChanges();
         }
-
-        // Seed Chart of Accounts
-        if (!context.ChartOfAccounts.Any())
-        {
-            var chartOfAccounts = new List<ChartOfAccount>
-            {
-                new ChartOfAccount { Name = "Assets", Code = "1000", NormalBalance = "Debit", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new ChartOfAccount { Name = "Liabilities", Code = "2000", NormalBalance = "Credit", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new ChartOfAccount { Name = "Equity", Code = "3000", NormalBalance = "Credit", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new ChartOfAccount { Name = "Revenue", Code = "4000", NormalBalance = "Credit", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new ChartOfAccount { Name = "Expenses", Code = "5000", NormalBalance = "Debit", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
-            };
-            context.ChartOfAccounts.AddRange(chartOfAccounts);
-            context.SaveChanges();
-        }
     }
 }
 

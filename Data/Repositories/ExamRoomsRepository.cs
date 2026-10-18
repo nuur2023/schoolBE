@@ -42,6 +42,7 @@ public class ExamRoomsRepository(SchoolContext context) : IExamRooms
     {
         return await _dbSet
             .Include(er => er.School)
+            .OrderBy(er => er.Name)
             .ToListAsync();
     }
 
@@ -53,14 +54,14 @@ public class ExamRoomsRepository(SchoolContext context) : IExamRooms
 
         if (!string.IsNullOrEmpty(search))
         {
-            query = query.Where(er => 
+            query = query.Where(er =>
                 er.Name.Contains(search) ||
                 (er.School != null && er.School.Name.Contains(search)));
         }
 
         var totalCount = await query.CountAsync();
         var data = await query
-            .OrderByDescending(er => er.CreatedAt)
+            .OrderBy(er => er.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -68,4 +69,16 @@ public class ExamRoomsRepository(SchoolContext context) : IExamRooms
         return (data, totalCount);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 

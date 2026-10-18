@@ -1,13 +1,16 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using schoolBE.Data;
 using schoolBE.Data.Interfaces;
 using schoolBE.Data.Repositories;
+using schoolBE.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // Add services to the container.
 builder.Services.AddControllers()
@@ -15,6 +18,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.WriteIndented = true;
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase; // Use camelCase for JSON
     });
 
 // Configure JWT Authentication
@@ -42,58 +46,77 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero // Remove delay of token when expire
     };
 
-    // Read token from cookie
+    // Read token from cookie or Authorization header
     options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
-            context.Token = context.Request.Cookies["authToken"];
+            // First try to get token from cookie
+            var token = context.Request.Cookies["authToken"];
+            
+            // If no cookie, try Authorization header (for cross-origin requests)
+            if (string.IsNullOrEmpty(token))
+            {
+                var authHeader = context.Request.Headers["Authorization"].ToString();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
+                    token = authHeader.Substring("Bearer ".Length).Trim();
+                }
+            }
+            
+            context.Token = token;
             return Task.CompletedTask;
         }
     };
 });
 
 // Configure Entity Framework
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+var connectionString = builder.Configuration.GetConnectionString("ConStr") 
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<SchoolContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+// Add HttpContextAccessor As AddSingleton 
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+
 // Register Repositories
-builder.Services.AddScoped<IAccounts, AccountsRepository>();
 builder.Services.AddScoped<IAttendance, AttendanceRepository>();
-builder.Services.AddScoped<IChartOfAccount, ChartOfAccountRepository>();
 builder.Services.AddScoped<IClasses, ClassesRepository>();
 builder.Services.AddScoped<IClassSubjects, ClassSubjectsRepository>();
 builder.Services.AddScoped<IContacts, ContactsRepository>();
 builder.Services.AddScoped<IExamResults, ExamResultsRepository>();
 builder.Services.AddScoped<IExamSchedule, ExamScheduleRepository>();
+builder.Services.AddScoped<IExamSubject, ExamSubjectRepository>();
 builder.Services.AddScoped<IExams, ExamsRepository>();
 builder.Services.AddScoped<IExamParticipants, ExamParticipantsRepository>();
 builder.Services.AddScoped<IExamRooms, ExamRoomsRepository>();
 builder.Services.AddScoped<IExpense, ExpenseRepository>();
-builder.Services.AddScoped<IFiscalYear, FiscalYearRepository>();
-builder.Services.AddScoped<IJournalDetails, JournalDetailsRepository>();
-builder.Services.AddScoped<IJournalEntry, JournalEntryRepository>();
 builder.Services.AddScoped<ILevels, LevelsRepository>();
 builder.Services.AddScoped<ILevelSubjects, LevelSubjectsRepository>();
 builder.Services.AddScoped<IMenus, MenusRepository>();
 builder.Services.AddScoped<IPayment, PaymentRepository>();
 builder.Services.AddScoped<IPaymentMethods, PaymentMethodsRepository>();
+builder.Services.AddScoped<IFeeCategories, FeeCategoriesRepository>();
 builder.Services.AddScoped<IPayRoll, PayRollRepository>();
 builder.Services.AddScoped<IPermissions, PermissionsRepository>();
 builder.Services.AddScoped<IPersons, PersonsRepository>();
 builder.Services.AddScoped<IRoles, RolesRepository>();
-builder.Services.AddScoped<ISchoolAccounts, SchoolAccountsRepository>();
 builder.Services.AddScoped<ISchools, SchoolsRepository>();
 builder.Services.AddScoped<ISchoolUsers, SchoolUsersRepository>();
 builder.Services.AddScoped<IStages, StagesRepository>();
 builder.Services.AddScoped<IStudentEnrollments, StudentEnrollmentsRepository>();
+builder.Services.AddScoped<IStudentExit, StudentExitRepository>();
+builder.Services.AddScoped<IStudentGraduation, StudentGraduationRepository>();
+builder.Services.AddScoped<IStudentTransfer, StudentTransferRepository>();
+builder.Services.AddScoped<IApp, AppRepository>();
 builder.Services.AddScoped<ISubjects, SubjectsRepository>();
 builder.Services.AddScoped<ISubmenus, SubmenusRepository>();
 builder.Services.AddScoped<IUsers, UsersRepository>();
-builder.Services.AddScoped<IYearEndClosingEntry, YearEndClosingEntryRepository>();
+builder.Services.AddScoped<IStudentChargePostingService, StudentChargePostingService>();
+builder.Services.AddScoped<AutoChargeRunner>();
+builder.Services.AddHostedService<AutoChargeBackgroundService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -130,13 +153,15 @@ builder.Services.AddSwaggerGen(c =>
 // Add CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:4200") // Add your frontend URLs
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials(); // Allow cookies
-    });
+    options.AddPolicy("CorePolicy",
+        builder =>
+        {
+            builder
+                .WithOrigins("http://localhost:5173", "http://127.0.0.1:5174", "http://10.111.29.20:5174") // Allow frontend origins
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials(); // Required when using credentials: 'include' in the frontend
+        });
 });
 
 var app = builder.Build();
@@ -164,13 +189,46 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// CORS must be before UseHttpsRedirection to avoid redirect issues with preflight requests
+app.UseCors("CorePolicy");
 
-app.UseCors("AllowAll");
+// Enable static files to serve images from the Images directory
+var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "Images");
+if (!Directory.Exists(imagesPath))
+{
+    Directory.CreateDirectory(imagesPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imagesPath),
+    RequestPath = "/Images",
+    OnPrepareResponse = ctx =>
+    {
+        // Allow the SPA (different origin/port) to fetch photos for PDF generation.
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=3600");
+    }
+});
+
+// Disable HTTPS redirection in development to avoid CORS preflight issues
+// Only redirect to HTTPS in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Configure to listen on all interfaces (0.0.0.0) so mobile devices can connect
+var urls = new[] { "http://0.0.0.0:5028" };
+app.Urls.Clear();
+foreach (var url in urls)
+{
+    app.Urls.Add(url);
+}
 
 app.Run();

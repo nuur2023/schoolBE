@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
@@ -9,6 +10,7 @@ namespace schoolBE.Controllers;
 [ApiController]
 [Route("api/examparticipants")]
 [Authorize]
+[EnableCors(policyName: "CorePolicy")]
 public class ExamParticipantsController : ControllerBase
 {
     private readonly IExamParticipants _repository;
@@ -72,6 +74,11 @@ public class ExamParticipantsController : ControllerBase
             participant.Status = "Scheduled";
         }
 
+        if (!participant.SubjectId.HasValue || participant.SubjectId.Value <= 0)
+        {
+            return BadRequest(new { message = "Subject is required." });
+        }
+
         var created = await _repository.AddAsync(participant);
         var result = await _repository.GetByIdAsync(created.Id);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, result);
@@ -87,6 +94,11 @@ public class ExamParticipantsController : ControllerBase
 
         foreach (var participant in participants)
         {
+            if (!participant.SubjectId.HasValue || participant.SubjectId.Value <= 0)
+            {
+                return BadRequest(new { message = "Subject is required for each participant." });
+            }
+
             participant.CreatorId = currentUserId;
             participant.CreatedAt = now;
             participant.UpdatedAt = now;
@@ -94,6 +106,26 @@ public class ExamParticipantsController : ControllerBase
             if (string.IsNullOrEmpty(participant.Status))
             {
                 participant.Status = "Scheduled";
+            }
+        }
+
+        var uniqueInRequest = participants
+            .Select(p => $"{p.ExamScheduleId}:{p.StudentId}:{p.SubjectId}")
+            .ToHashSet();
+        if (uniqueInRequest.Count != participants.Count)
+        {
+            return BadRequest(new { message = "The same student cannot be added twice for the same subject." });
+        }
+
+        foreach (var scheduleId in participants.Select(p => p.ExamScheduleId).Distinct())
+        {
+            var existing = await _repository.GetByExamScheduleIdAsync(scheduleId);
+            foreach (var participant in participants.Where(p => p.ExamScheduleId == scheduleId))
+            {
+                if (existing.Any(e => e.StudentId == participant.StudentId && e.SubjectId == participant.SubjectId))
+                {
+                    return BadRequest(new { message = "A student is already registered for this exam schedule and subject." });
+                }
             }
         }
 
@@ -120,6 +152,7 @@ public class ExamParticipantsController : ControllerBase
         existing.ClassId = participant.ClassId;
         existing.LevelId = participant.LevelId;
         existing.RoomId = participant.RoomId;
+        existing.SubjectId = participant.SubjectId;
         existing.SeatNumber = participant.SeatNumber;
         existing.Status = participant.Status;
         existing.StatusNote = participant.StatusNote;

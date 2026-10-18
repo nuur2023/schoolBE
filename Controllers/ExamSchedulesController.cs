@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using schoolBE.Data.Interfaces;
 using schoolBE.Models;
+using schoolBE.ViewModels;
 using System.Security.Claims;
 
 namespace schoolBE.Controllers;
@@ -9,6 +11,7 @@ namespace schoolBE.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableCors(policyName: "CorePolicy")]
 public class ExamSchedulesController : ControllerBase
 {
     private readonly IExamSchedule _repository;
@@ -35,19 +38,48 @@ public class ExamSchedulesController : ControllerBase
         return Ok(schedules);
     }
 
+    // Static path segments MUST be registered before [HttpGet("{id}")] or "for-participants" is captured as id and fails int binding.
+    [HttpGet("paged")]
+    public async Task<ActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
+    {
+        try
+        {
+            var result = await _repository.GetPagedAsync(page, pageSize, search);
+            return Ok(new { data = result.data, totalCount = result.totalCount, page, pageSize });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while fetching exam schedules", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Active exam schedules for a school (Create Participants — labels only, not filtered by level/subjects).
+    /// </summary>
+    [HttpGet("for-participants")]
+    public async Task<ActionResult<List<ExamSchedulePickerItemDto>>> GetForParticipants(
+        [FromQuery] int schoolId)
+    {
+        if (schoolId <= 0)
+            return BadRequest(new { message = "schoolId must be greater than zero." });
+
+        try
+        {
+            var items = await _repository.GetActiveSchedulesPickerForSchoolAsync(schoolId);
+            return Ok(items);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while fetching exam schedules for participants", error = ex.Message });
+        }
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<ExamSchedule>> GetById(int id)
     {
         var schedule = await _repository.GetByIdAsync(id);
         if (schedule == null) return NotFound();
         return Ok(schedule);
-    }
-
-    [HttpGet("paged")]
-    public async Task<ActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
-    {
-        var result = await _repository.GetPagedAsync(page, pageSize, search);
-        return Ok(new { data = result.data, totalCount = result.totalCount, page, pageSize });
     }
 
     [HttpPost]
@@ -57,7 +89,7 @@ public class ExamSchedulesController : ControllerBase
         {
             return BadRequest(new { message = "ExamSchedule data is required" });
         }
-        schedule.CreatorId = GetCurrentUserId();
+        // CreatorId removed from ExamSchedule model
         var created = await _repository.AddAsync(schedule);
         // Reload with navigation properties
         var result = await _repository.GetByIdAsync(created.Id);
@@ -75,7 +107,7 @@ public class ExamSchedulesController : ControllerBase
         var createdSchedules = new List<ExamSchedule>();
         foreach (var schedule in schedules)
         {
-            schedule.CreatorId = currentUserId;
+            // CreatorId removed from ExamSchedule model
             var created = await _repository.AddAsync(schedule);
             // Reload with navigation properties
             var result = await _repository.GetByIdAsync(created.Id);

@@ -9,3 +9,15 @@ public interface IExamRooms : IBaseSchoolInterface<ExamRoom>
     Task<(List<ExamRoom> data, int totalCount)> GetPagedAsync(int page, int pageSize, string? search = null);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+

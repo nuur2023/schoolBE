@@ -44,6 +44,7 @@ public class PersonsRepository(SchoolContext context) : IPersons
         return await _dbSet
             .Include(p => p.Role)
             .Include(p => p.School)
+            .OrderBy(p => p.Name)
             .ToListAsync();
     }
 
@@ -56,8 +57,8 @@ public class PersonsRepository(SchoolContext context) : IPersons
 
         if (!string.IsNullOrEmpty(search))
         {
-            query = query.Where(p => 
-                p.Name.Contains(search) || 
+            query = query.Where(p =>
+                p.Name.Contains(search) ||
                 (p.Email != null && p.Email.Contains(search)) ||
                 (p.Address != null && p.Address.Contains(search)) ||
                 (p.Role != null && p.Role.Name.Contains(search)) ||
@@ -66,7 +67,7 @@ public class PersonsRepository(SchoolContext context) : IPersons
 
         var totalCount = await query.CountAsync();
         var data = await query
-            .OrderByDescending(p => p.CreatedAt)
+            .OrderBy(p => p.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -74,4 +75,16 @@ public class PersonsRepository(SchoolContext context) : IPersons
         return (data, totalCount);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
